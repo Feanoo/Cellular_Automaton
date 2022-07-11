@@ -8,21 +8,27 @@ void mainloop(SDL_Window* window, SDL_Renderer* renderer){
     // printf("%d, %d\n", width, height);
 
     SDL_Event event;
-    int running = 1;
-    int tile_size = 15;
+    int running = 0;
+    int tile_size = 100;
     int nx=(width / tile_size), ny=(height / tile_size), n_tiles=nx*ny;
 
     char* grid = malloc(sizeof(char) * n_tiles), *temp;
     memset(grid, 0, sizeof(char) * n_tiles);
 
-    // grid[0] = 1;
-    // grid[nx*5] = 1;
+    printf("%d\n", n_tiles);
 
-    for (int i=50; i>=0; i--){
-        grid[nx*i + 20] = 2;
-        grid[nx*i + 2] = 1;
-        grid[nx*i + 30] = 1;
-    }
+    // grid[0] = 1;
+    // grid[nx] = 1;
+    // grid[nx*2] = 1;
+    grid[0] = 1;
+    grid[nx] = 1;
+
+    // for (int i=100; i>=0; i--){
+    //     grid[nx*79 + i] = 1;
+    // }
+
+    set_tiles(grid, 0, get_tiles(grid, 0, nx, ny), nx, ny);
+    printf("%d\n", grid[0]);
 
     while (running){
         while (SDL_PollEvent(&event)){
@@ -46,7 +52,8 @@ void mainloop(SDL_Window* window, SDL_Renderer* renderer){
         draw_grid(renderer, grid, nx, ny, tile_size);
 
         SDL_RenderPresent(renderer);
-        SDL_Delay(60);
+        SDL_Delay(100);
+        // running = 0;
     }
 
     free(grid);
@@ -55,36 +62,136 @@ void mainloop(SDL_Window* window, SDL_Renderer* renderer){
 char* update(char* grid, int nx, int ny){
     char* new_grid = (char*)malloc(sizeof(char) * nx*ny);
     memset(new_grid, 0, nx*ny);
-    for (int i=nx*ny-1; i>-1; i--){
+    for (int i=0; i<nx*ny; i++){
         // new_grid[i] = grid[i];
-        switch(grid[i]){
-            case 1:
-                update_sand(grid, new_grid, i, nx, ny);
-                break;
-            case 2:
-                update_water(grid, new_grid, i, nx, ny);
-                break;
-        }
+        update_tile(grid, new_grid, i, nx, ny);
+        // switch(grid[i]){
+        //     case 1:
+        //         update_sand(grid, new_grid, i, nx, ny);
+        //         break;
+        //     case 2:
+        //         update_water(grid, new_grid, i, nx, ny);
+        //         break;
+        // }
     }
 
     return new_grid;
+}
+
+void update_tile(char* grid, char* new_grid, int i, int nx, int ny){
+    long unsigned int n = get_tiles(grid, i, nx, ny);
+
+    set_tiles(new_grid, i, get_new_tiles(n), nx, ny);
+    // printf("%d\n", grid[1]);
+}
+
+void set_tiles(char* grid, int index, long unsigned int n, int nx, int ny){
+    int tile;
+     for (int i=-1; i<2; i++){
+        for (int j=-1; j<2; j++){
+            tile = n & 127;
+            n = n >> 7;
+
+            int ind = index + j + nx*i;
+            if(ind >= nx*ny || ind < 0){
+                continue;
+            }
+            //127 c'est le bord
+            if (tile > 127){
+                printf("error : tile=%d\n", tile);
+                continue;
+            }
+            if (tile != 127 && !grid[ind]){
+                if (tile){
+                    printf("%d : %d\n", ind, tile);
+                }
+                grid[ind] = (char)tile;
+            }
+        }
+    }
+}
+
+long unsigned int get_new_tiles(long unsigned int n){
+    return n;
+}
+
+long unsigned int get_tiles(char* grid, int index, int nx, int ny){
+    long unsigned int tile = 127;
+
+    int begin_i=-1, begin_j=-1;
+    int end_i=2, end_j=2;
+
+    //on represente le bord 1111111 = 127
+
+    //le haut est au bord
+    if (index < nx){
+        tile = (tile | 127) << 7;
+        tile = (tile | 127) << 7;
+        tile = (tile | 127) << 7;
+        begin_i = 0;
+    }
+
+    //le cote gauche est au bord
+    if (index % nx == 0){
+        begin_j = 0;
+    }
+
+    //le cote droit est au bord
+    if (index % nx == nx-1){
+        end_j = 1;
+    }
+
+    //le bas est au bord
+    if (index / nx == ny - 1){
+        end_i = 1;
+    }
+
+    for (int i=begin_i; i<end_i; i++){
+        for (int j=begin_j; j<end_j; j++){
+            if ((!begin_j && !j) || (end_j == 1 && j==1) || (end_i == 1 && i==1)){
+                tile = (tile | 127) << 7;
+            }
+            tile = tile | grid[index + j + nx*i];
+            tile = tile << 7;
+            if (grid[index + j + nx*i]){
+                printf("i : %d, j : %d,  n = %d\n", i, j, grid[index + j + nx*i]);
+            }
+        }
+    }
+
+    return tile;
 }
 
 void update_sand(char* grid, char* new_grid, int i, int nx, int ny){
     int x = i%nx, y = i/nx;
     // printf("%d, %d, %d\n", x, y, ny);
     if (y < ny-1){
-        if (!new_grid[i + nx] || !grid[i + nx]){
-            // new_grid[i] = 0;
+        if (!new_grid[i + nx] && !grid[i + nx]){
+            // new_grid[i] = grid[i];
             new_grid[i + nx] = 1;
             return;
         }
+ 
+        //fall throug water
+        if (new_grid[i + nx] == 2 || grid[i + nx] == 2){
+            new_grid[i] = grid[i];
+            new_grid[i + nx] = 1;
+            return;
+        }
+
         if (x > 0){
             if (!new_grid[i + nx - 1] || !grid[i + nx - 1]){
                 // new_grid[i] = 0;
                 new_grid[i + nx - 1] = 1;
                 return;
             }
+
+            // //fall throug water
+            // else if (new_grid[i + nx - 1] == 2 || grid[i + nx - 1] == 2){
+            //     new_grid[i] = 2;
+            //     new_grid[i + nx - 1] = 1;
+            //     return;
+            // }
         }
         if (x < nx){
             if (!new_grid[i + nx + 1] || !grid[i + nx + 1]){
@@ -92,6 +199,13 @@ void update_sand(char* grid, char* new_grid, int i, int nx, int ny){
                 new_grid[i + nx + 1] = 1;
                 return;
             }
+
+            // //fall throug water
+            // else if (new_grid[i + nx + 1] == 2 || grid[i + nx + 1] == 2){
+            //     new_grid[i] = 2;
+            //     new_grid[i + nx + 1] = 1;
+            //     return;
+            // }
         }
     }
 
