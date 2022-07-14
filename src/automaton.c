@@ -1,6 +1,10 @@
 #include "automaton.h"
 #include "draw.h"
 
+#define VOID 0
+#define SAND 1
+#define WATR 2
+
 void mainloop(SDL_Window* window, SDL_Renderer* renderer){
     int width, height;
     SDL_GetWindowSize(window, &width, &height);
@@ -8,11 +12,11 @@ void mainloop(SDL_Window* window, SDL_Renderer* renderer){
     // printf("%d, %d\n", width, height);
 
     SDL_Event event;
-    int running = 0;
-    int tile_size = 100;
+    int running = 1;
+    int tile_size = 10;
     int nx=(width / tile_size), ny=(height / tile_size), n_tiles=nx*ny;
 
-    char* grid = malloc(sizeof(char) * n_tiles), *temp;
+    char* grid = malloc(sizeof(char) * n_tiles), *new_grid;
     memset(grid, 0, sizeof(char) * n_tiles);
 
     printf("%d\n", n_tiles);
@@ -23,12 +27,20 @@ void mainloop(SDL_Window* window, SDL_Renderer* renderer){
     grid[0] = 1;
     grid[nx] = 1;
 
-    // for (int i=100; i>=0; i--){
-    //     grid[nx*79 + i] = 1;
-    // }
+    for (int i=50; i>=0; i--){
+        grid[nx*i + 10] = SAND;
+        grid[nx*i + 20] = WATR;
+        grid[nx*i + 30] = WATR;
+        grid[nx*i + 40] = WATR;
+        grid[nx*i + 50] = WATR;
+    }
 
-    set_tiles(grid, 0, get_tiles(grid, 0, nx, ny), nx, ny);
-    printf("%d\n", grid[0]);
+    // set_tiles(grid, 0, get_tiles(grid, 0, nx, ny), nx, ny);
+    // printf("%d\n", grid[0]);
+
+    draw_grid(renderer, grid, nx, ny, tile_size);
+    SDL_RenderPresent(renderer);
+    SDL_Delay(2000);
 
     while (running){
         while (SDL_PollEvent(&event)){
@@ -42,9 +54,9 @@ void mainloop(SDL_Window* window, SDL_Renderer* renderer){
             }
         }
 
-        temp = update(grid, nx, ny);
+        new_grid = update(grid, nx, ny);
         free(grid);
-        grid = temp;
+        grid = new_grid;
 
         SDL_SetRenderDrawColor(renderer, 20, 20, 20, 255);
         SDL_RenderClear(renderer);
@@ -64,15 +76,15 @@ char* update(char* grid, int nx, int ny){
     memset(new_grid, 0, nx*ny);
     for (int i=0; i<nx*ny; i++){
         // new_grid[i] = grid[i];
-        update_tile(grid, new_grid, i, nx, ny);
-        // switch(grid[i]){
-        //     case 1:
-        //         update_sand(grid, new_grid, i, nx, ny);
-        //         break;
-        //     case 2:
-        //         update_water(grid, new_grid, i, nx, ny);
-        //         break;
-        // }
+        // update_tile(grid, new_grid, i, nx, ny);
+        switch(grid[i]){
+            case 1:
+                update_sand(grid, new_grid, i, nx, ny);
+                break;
+            case 2:
+                update_water(grid, new_grid, i, nx, ny);
+                break;
+        }
     }
 
     return new_grid;
@@ -164,48 +176,47 @@ long unsigned int get_tiles(char* grid, int index, int nx, int ny){
 
 void update_sand(char* grid, char* new_grid, int i, int nx, int ny){
     int x = i%nx, y = i/nx;
-    // printf("%d, %d, %d\n", x, y, ny);
+
     if (y < ny-1){
-        if (!new_grid[i + nx] && !grid[i + nx]){
-            // new_grid[i] = grid[i];
-            new_grid[i + nx] = 1;
+        if (!new_grid[i+nx] && !grid[i+nx]){
+            new_grid[i+nx] = SAND;
             return;
         }
- 
-        //fall throug water
-        if (new_grid[i + nx] == 2 || grid[i + nx] == 2){
-            new_grid[i] = grid[i];
-            new_grid[i + nx] = 1;
+
+        /*sand should fall through water*/
+        if (grid[i+nx] == WATR){
+            new_grid[i] = WATR;
+            new_grid[i+nx] = SAND;
             return;
         }
 
         if (x > 0){
-            if (!new_grid[i + nx - 1] || !grid[i + nx - 1]){
-                // new_grid[i] = 0;
-                new_grid[i + nx - 1] = 1;
+            if (!grid[i + nx - 1] && !new_grid[i + nx - 1]){
+                new_grid[i + nx - 1] = SAND;
                 return;
             }
 
-            // //fall throug water
-            // else if (new_grid[i + nx - 1] == 2 || grid[i + nx - 1] == 2){
-            //     new_grid[i] = 2;
-            //     new_grid[i + nx - 1] = 1;
-            //     return;
-            // }
+            /*fall through water*/
+            if (grid[i + nx - 1] == 2){
+                new_grid[i + nx - 1] = SAND;
+                new_grid[i] = WATR;
+                return;
+            }
         }
-        if (x < nx){
-            if (!new_grid[i + nx + 1] || !grid[i + nx + 1]){
-                // new_grid[i] = 0;
-                new_grid[i + nx + 1] = 1;
+
+
+        if (x < nx - 1){
+            if (!grid[i + nx + 1] && !new_grid[i + nx + 1]){
+                new_grid[i + nx + 1] = SAND;
                 return;
             }
 
-            // //fall throug water
-            // else if (new_grid[i + nx + 1] == 2 || grid[i + nx + 1] == 2){
-            //     new_grid[i] = 2;
-            //     new_grid[i + nx + 1] = 1;
-            //     return;
-            // }
+            /*fall through water*/
+            if (grid[i + nx + 1] == 2){
+                new_grid[i + nx + 1] = SAND;
+                new_grid[i] = WATR;
+                return;
+            }
         }
     }
 
@@ -215,7 +226,7 @@ void update_sand(char* grid, char* new_grid, int i, int nx, int ny){
 void update_water(char* grid, char* new_grid, int i, int nx, int ny){
     int x = i%nx, y = i/nx;
     // printf("%d\n", i);
-    if (y < ny-1){
+/*    if (y < ny-1){
         if (!new_grid[i + nx] || !grid[i + nx]){
             // new_grid[i] = 0;
             new_grid[i + nx] = 2;
@@ -250,6 +261,43 @@ void update_water(char* grid, char* new_grid, int i, int nx, int ny){
     if (x < nx){
         if (!new_grid[i + 1]){
             new_grid[i + 1] = 2;
+            return;
+        }
+    }*/
+
+    if (y < ny-1){
+        if (!new_grid[i+nx] && !grid[i+nx]){
+            new_grid[i+nx] = WATR;
+            return;
+        }
+
+        if (x > 0){
+            if (!grid[i + nx - 1] && !new_grid[i + nx - 1]){
+                new_grid[i + nx - 1] = WATR;
+                return;
+            }
+        }
+
+
+        if (x < nx - 1){
+            if (!grid[i + nx + 1] && !new_grid[i + nx + 1]){
+                new_grid[i + nx + 1] = WATR;
+                return;
+            }
+
+        }
+    }
+
+    if (x > 0){
+        if (!grid[i - 1] && !new_grid[i-1]){
+            new_grid[i - 1] = WATR;
+            return;
+        }
+    }
+    
+    if (x < nx - 1){
+        if (!grid[i + 1] && !new_grid[i + 1]){
+            new_grid[i + 1] = WATR;
             return;
         }
     }

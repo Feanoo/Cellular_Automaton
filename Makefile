@@ -4,7 +4,10 @@ LD=-lSDL2 -lSDL2main -lSDL2_ttf -lSDL2_image -lm
 BINPATH=bin
 SRCPATH=src
 
-build: $(BINPATH)/cellular_automaton
+build: $(BINPATH) $(BINPATH)/cellular_automaton
+
+$(BINPATH):
+	mkdir $(BINPATH)
 
 $(BINPATH)/cellular_automaton: $(BINPATH)/main.o 
 	$(CC) $(BINPATH)/*.o -o $(BINPATH)/cellular_automaton ${LD}
@@ -19,4 +22,4 @@ $(BINPATH)/draw.o: $(SRCPATH)/draw.*
 	$(CC) -c ${CFLAGS} $(SRCPATH)/draw.c -o $(BINPATH)/draw.o
 
 clean:
-	rm -f $(BINPATH)/*.*
+	rm -r $(BINPATH)
