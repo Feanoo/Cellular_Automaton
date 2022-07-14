@@ -225,46 +225,6 @@ void update_sand(char* grid, char* new_grid, int i, int nx, int ny){
 
 void update_water(char* grid, char* new_grid, int i, int nx, int ny){
     int x = i%nx, y = i/nx;
-    // printf("%d\n", i);
-/*    if (y < ny-1){
-        if (!new_grid[i + nx] || !grid[i + nx]){
-            // new_grid[i] = 0;
-            new_grid[i + nx] = 2;
-            return;
-        }
-        if (x > 0){
-            if (!new_grid[i + nx - 1] || !grid[i + nx - 1]){
-                // new_grid[i] = 0;
-                new_grid[i + nx - 1] = 2;
-                return;
-            }
-        }
-        if (x < nx){
-            if (!new_grid[i + nx + 1] || !grid[i + nx + 1]){
-                // new_grid[i] = 0;
-                new_grid[i + nx + 1] = 2;
-                return;
-            }
-        }
-    }
-
-    if (x > 0){
-        if (!new_grid[i - 1] && !grid[i-1]){
-            // printf("pute, %d, %d, %d | ", i, x, y);
-            // printf("new grid i, i-1 : %d, %d | ", new_grid[i], new_grid[i-1]);
-            // printf("grid i, i-1 : %d, %d\n", grid[i], grid[i-1]);
-            new_grid[i - 1] = 2;
-            return;
-        }
-    }
-
-    if (x < nx){
-        if (!new_grid[i + 1]){
-            new_grid[i + 1] = 2;
-            return;
-        }
-    }*/
-
     if (y < ny-1){
         if (!new_grid[i+nx] && !grid[i+nx]){
             new_grid[i+nx] = WATR;
