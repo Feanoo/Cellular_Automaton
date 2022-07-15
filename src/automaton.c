@@ -225,12 +225,12 @@ void update_sand(char* grid, char* new_grid, int i, int nx, int ny){
             }
 
             /*fall through water*/
-            if (grid[i + nx - 1] == 2){
-                new_grid[i + nx - 1] = SAND;
-                grid[i + nx - 1] = VOID;
-                new_grid[i] = WATR;
-                return;
-            }
+            // if (grid[i + nx - 1] == 2){
+            //     new_grid[i + nx - 1] = SAND;
+            //     grid[i + nx - 1] = VOID;
+            //     new_grid[i] = WATR;
+            //     return;
+            // }
         }
 
 
@@ -241,12 +241,12 @@ void update_sand(char* grid, char* new_grid, int i, int nx, int ny){
             }
 
             /*fall through water*/
-            if (grid[i + nx + 1] == 2){
-                new_grid[i + nx + 1] = SAND;
-                grid[i + nx + 1] = VOID;
-                new_grid[i] = WATR;
-                return;
-            }
+            // if (grid[i + nx + 1] == 2){
+            //     new_grid[i + nx + 1] = SAND;
+            //     grid[i + nx + 1] = VOID;
+            //     new_grid[i] = WATR;
+            //     return;
+            // }
         }
     }
 
