@@ -9,8 +9,6 @@ void mainloop(SDL_Window* window, SDL_Renderer* renderer){
     int width, height;
     SDL_GetWindowSize(window, &width, &height);
 
-    // printf("%d, %d\n", width, height);
-
     SDL_Event event;
     int running = 1;
     int tile_size = 10;
@@ -18,14 +16,6 @@ void mainloop(SDL_Window* window, SDL_Renderer* renderer){
 
     char* grid = malloc(sizeof(char) * n_tiles), *new_grid;
     memset(grid, 0, sizeof(char) * n_tiles);
-
-    printf("%d\n", n_tiles);
-
-    // grid[0] = 1;
-    // grid[nx] = 1;
-    // grid[nx*2] = 1;
-    grid[0] = 1;
-    grid[nx] = 1;
 
     for (int i=50; i>=0; i--){
         grid[10 + i] = SAND;
@@ -38,8 +28,11 @@ void mainloop(SDL_Window* window, SDL_Renderer* renderer){
         grid[nx*(i+5) + 60] = WATR;
     }
 
-    // set_tiles(grid, 0, get_tiles(grid, 0, nx, ny), nx, ny);
-    // printf("%d\n", grid[0]);
+
+    int add = 0;
+    int add_type = SAND;
+    int mousex, mousey;
+    SDL_GetMouseState(&mousex, &mousey);
 
     draw_grid(renderer, grid, nx, ny, tile_size);
     SDL_RenderPresent(renderer);
@@ -55,6 +48,34 @@ void mainloop(SDL_Window* window, SDL_Renderer* renderer){
                     running = 0;
                 }
             }
+            else if (event.type == SDL_MOUSEBUTTONDOWN){
+                switch (event.button.button){
+                    case 1:
+                        add = 1;
+                        break;
+                    case 3:
+                        if (add_type == SAND){
+                            add_type = WATR;
+                        }
+                        else{
+                            add_type = SAND;
+                        }
+                        break;
+                }
+            }
+            else if (event.type == SDL_MOUSEBUTTONUP){
+                add = 0;
+            }
+            else if (event.type == SDL_MOUSEMOTION){
+                SDL_GetMouseState(&mousex, &mousey);
+            }
+        }
+
+        if (add){
+            int tile = get_tile(mousex, mousey, nx, ny, tile_size);
+            if (!grid[tile]){
+                grid[tile] = add_type;
+            }
         }
 
         new_grid = update(grid, nx, ny);
@@ -68,7 +89,6 @@ void mainloop(SDL_Window* window, SDL_Renderer* renderer){
 
         SDL_RenderPresent(renderer);
         SDL_Delay(100);
-        // running = 0;
     }
 
     free(grid);
@@ -78,8 +98,6 @@ char* update(char* grid, int nx, int ny){
     char* new_grid = (char*)malloc(sizeof(char) * nx*ny);
     memset(new_grid, 0, nx*ny);
     for (int i=nx*ny-1; i>-1; i--){
-        // new_grid[i] = grid[i];
-        // update_tile(grid, new_grid, i, nx, ny);
         switch(grid[i]){
             case 1:
                 update_sand(grid, new_grid, i, nx, ny);
@@ -91,6 +109,12 @@ char* update(char* grid, int nx, int ny){
     }
 
     return new_grid;
+}
+
+int get_tile(int x, int y, int nx, int ny, int tile_size){
+    x /= tile_size;
+    y /= tile_size;
+    return y*nx + x;
 }
 
 void update_tile(char* grid, char* new_grid, int i, int nx, int ny){
@@ -232,7 +256,7 @@ void update_sand(char* grid, char* new_grid, int i, int nx, int ny){
 void update_water(char* grid, char* new_grid, int i, int nx, int ny){
     int x = i%nx, y = i/nx;
     if (y < ny-1){
-        if (!new_grid[i+nx]){// && !grid[i+nx]){
+        if (!new_grid[i+nx]){
             new_grid[i+nx] = WATR;
             return;
         }
@@ -254,14 +278,16 @@ void update_water(char* grid, char* new_grid, int i, int nx, int ny){
         }
     }
 
-    if (rand()%2 && x > 0){
-        if (!grid[i - 1] && !new_grid[i-1]){
-            new_grid[i - 1] = WATR;
-            return;
+    if (rand()%2){
+        if (x > 0){
+            if (!grid[i - 1] && !new_grid[i-1]){
+                new_grid[i - 1] = WATR;
+                return;
+            }
         }
     }
     
-    if (rand()%2 && x < nx - 1){
+    if (x < nx - 1){
         if (!grid[i + 1] && !new_grid[i + 1]){
             new_grid[i + 1] = WATR;
             return;
