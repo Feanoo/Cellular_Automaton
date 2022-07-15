@@ -6,6 +6,10 @@ SRCPATH=src
 
 build: $(BINPATH) $(BINPATH)/cellular_automaton
 
+run:
+	make build
+	./$(BINPATH)/cellular_automaton
+
 $(BINPATH):
 	mkdir $(BINPATH)
 
