@@ -1,9 +1,14 @@
 #include "automaton.h"
 #include "draw.h"
 
+#define N_TYPES 6
+
 #define VOID 0
 #define SAND 1
 #define WATR 2
+#define WOOD 3
+#define FIRE 4
+#define SMOK 5
 
 void mainloop(SDL_Window* window, SDL_Renderer* renderer){
     int width, height;
@@ -17,17 +22,13 @@ void mainloop(SDL_Window* window, SDL_Renderer* renderer){
     char* grid = malloc(sizeof(char) * n_tiles), *new_grid;
     memset(grid, 0, sizeof(char) * n_tiles);
 
-    for (int i=50; i>=0; i--){
-        grid[10 + i] = SAND;
-        grid[nx + 10 + i] = SAND;
-        grid[nx*(i+5) + 10] = SAND;
-        grid[nx*(i+5) + 20] = WATR;
-        grid[nx*(i+5) + 30] = WATR;
-        grid[nx*(i+5) + 40] = WATR;
-        grid[nx*(i+5) + 50] = WATR;
-        grid[nx*(i+5) + 60] = WATR;
+    for (int j=1; j<=50; j++){
+        for (int i=0; i<nx; i++){
+            grid[nx*(ny - j) + i*(rand()%1+1)] = WOOD;
+        }
     }
 
+    grid[nx*(ny-2) + 21] = FIRE;
 
     int add = 0;
     int add_type = SAND;
@@ -54,12 +55,7 @@ void mainloop(SDL_Window* window, SDL_Renderer* renderer){
                         add = 1;
                         break;
                     case 3:
-                        if (add_type == SAND){
-                            add_type = WATR;
-                        }
-                        else{
-                            add_type = SAND;
-                        }
+                        add_type = (add_type+1)%N_TYPES;
                         break;
                 }
             }
@@ -73,9 +69,7 @@ void mainloop(SDL_Window* window, SDL_Renderer* renderer){
 
         if (add){
             int tile = get_tile(mousex, mousey, nx, ny, tile_size);
-            if (!grid[tile]){
-                grid[tile] = add_type;
-            }
+            grid[tile] = add_type;
         }
 
         new_grid = update(grid, nx, ny);
@@ -88,7 +82,7 @@ void mainloop(SDL_Window* window, SDL_Renderer* renderer){
         draw_grid(renderer, grid, nx, ny, tile_size);
 
         SDL_RenderPresent(renderer);
-        SDL_Delay(100);
+        SDL_Delay(50);
     }
 
     free(grid);
@@ -99,11 +93,20 @@ char* update(char* grid, int nx, int ny){
     memset(new_grid, 0, nx*ny);
     for (int i=nx*ny-1; i>-1; i--){
         switch(grid[i]){
-            case 1:
+            case SAND:
                 update_sand(grid, new_grid, i, nx, ny);
                 break;
-            case 2:
+            case WATR:
                 update_water(grid, new_grid, i, nx, ny);
+                break;
+            case WOOD:
+                new_grid[i] = grid[i];
+                break;
+            case FIRE:
+                update_fire(grid, new_grid, i, nx, ny);
+                break;
+            case SMOK:
+                update_smoke(grid, new_grid, i, nx, ny);
                 break;
         }
     }
@@ -295,4 +298,137 @@ void update_water(char* grid, char* new_grid, int i, int nx, int ny){
     }
 
     new_grid[i] = grid[i];
+}
+
+void update_fire(char* grid, char* new_grid, int i, int nx, int ny){
+    int x = i%nx, y = i/nx;
+
+    int n_neig = count_neig(grid, i, FIRE, nx, ny);
+
+    if (x > 0){
+        if (grid[i - 1] == WOOD){
+            grid[i - 1] = VOID;
+            new_grid[i - 1] = FIRE;
+        }
+        if (y > 0){
+            if (grid[i-1-nx] == WOOD){
+                grid[i-1-nx] = VOID;
+                new_grid[i-1-nx] = FIRE;
+            }
+            if (grid[i-nx] == WOOD){
+                grid[i-nx] = VOID;
+                new_grid[i-nx] = FIRE;
+            }
+        }
+        if (y < ny-1){
+            if (grid[i-1+nx] == WOOD){
+                grid[i-1+nx] = VOID;
+                new_grid[i-1+nx] = FIRE;
+            }
+            if (grid[i+nx] == WOOD){
+                grid[i+nx] = VOID;
+                new_grid[i+nx] = FIRE;
+            }
+        }
+    }
+
+    if (x < nx-1){
+        if (grid[i+1] == WOOD){
+            grid[i+1] = VOID;
+            new_grid[i+1] = FIRE;
+        }
+        if (y > 0){
+            if (grid[i+1-nx] == WOOD){
+                grid[i+1-nx] = VOID;
+                new_grid[i+1-nx] = FIRE;
+            }
+        }
+        if (y < ny-1){
+            if (grid[i+1+nx] == WOOD){
+                grid[i+1+nx] = VOID;
+                new_grid[i+1+nx] = FIRE;
+            }
+        }
+    }
+
+    if (n_neig > 6){
+        new_grid[i] = SMOK;
+        return;
+    }
+    if (n_neig > 2){
+        new_grid[i] = grid[i];
+    }
+}
+
+
+void update_smoke(char* grid, char* new_grid, int i, int nx, int ny){
+    int x = i%nx, y = i/nx;
+    if (y > 0){
+        if (!new_grid[i-nx] && !grid[i-nx]){
+            new_grid[i-nx] = SMOK;
+            return;
+        }
+
+        if (x > 0){
+            if (!grid[i - nx - 1] && !new_grid[i - nx - 1]){
+                new_grid[i - nx - 1] = SMOK;
+                return;
+            }
+        }
+
+
+        if (x < nx - 1){
+            if (!grid[i - nx + 1] && !new_grid[i - nx + 1]){
+                new_grid[i - nx + 1] = SMOK;
+                return;
+            }
+
+        }
+    }
+
+    if (rand()%2){
+        if (x > 0){
+            if (!grid[i - 1] && !new_grid[i-1]){
+                new_grid[i - 1] = SMOK;
+                return;
+            }
+        }
+    }
+    
+    if (x < nx - 1){
+        if (!grid[i + 1] && !new_grid[i + 1]){
+            new_grid[i + 1] = SMOK;
+            return;
+        }
+    }
+
+    new_grid[i] = grid[i];
+}
+
+
+int count_neig(char* grid, int i, char type, int nx, int ny){
+    int x = i%nx, y = i/nx, n=0;
+    if (x > 0){
+        n += grid[i-1] == type;
+        if (y > 0){
+            n += grid[i-1-nx] == type;
+            n += grid[i-nx] == type;
+        }
+        if (y < ny-1){
+            n += grid[i-1+nx] == type;
+            n += grid[i+nx] == type;
+        }
+    }
+
+    if (x < nx-1){
+        n += grid[i+1] == type;
+        if (y > 0){
+            n += grid[i+1-nx] == type;
+        }
+        if (y < ny-1){
+            n += grid[i+1+nx] == type;
+        }
+    }
+
+    return n;
 }
