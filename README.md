@@ -1,6 +1,6 @@
 # Cellular_Automaton
 
-This project is a cellular automaton in wich I simulated sand and water
+This project is a cellular automaton in wich I simulated different particles interacting with each other
 
 ## Dependecies
 
