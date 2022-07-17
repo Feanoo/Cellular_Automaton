@@ -1,14 +1,6 @@
 #include "automaton.h"
+#include "particles.h"
 #include "draw.h"
-
-#define N_TYPES 6
-
-#define VOID 0
-#define SAND 1
-#define WATR 2
-#define WOOD 3
-#define FIRE 4
-#define SMOK 5
 
 void mainloop(SDL_Window* window, SDL_Renderer* renderer){
     int width, height;
@@ -19,25 +11,26 @@ void mainloop(SDL_Window* window, SDL_Renderer* renderer){
     int tile_size = 10;
     int nx=(width / tile_size), ny=(height / tile_size), n_tiles=nx*ny;
 
-    char* grid = malloc(sizeof(char) * n_tiles), *new_grid;
+    unsigned char* grid = malloc(sizeof(unsigned char) * n_tiles), *new_grid;
     memset(grid, 0, sizeof(char) * n_tiles);
 
-    for (int j=1; j<=50; j++){
+    for (int j=1; j<=30; j++){
         for (int i=0; i<nx; i++){
-            grid[nx*(ny - j) + i*(rand()%1+1)] = WOOD;
+            grid[10*nx + 10+j] = WOOD;
+            grid[10*nx + 40+j] = WOOD;
+            grid[nx*(ny - j) + i*(rand()%3 != 0)] = STEM;
         }
     }
 
-    grid[nx*(ny-2) + 21] = FIRE;
+    grid[11*nx + 11] = WOOD;
+    grid[11*nx + 70] = WOOD;
+
+    int pause=1;
 
     int add = 0;
     int add_type = SAND;
     int mousex, mousey;
     SDL_GetMouseState(&mousex, &mousey);
-
-    draw_grid(renderer, grid, nx, ny, tile_size);
-    SDL_RenderPresent(renderer);
-    SDL_Delay(2000);
 
     while (running){
         while (SDL_PollEvent(&event)){
@@ -47,6 +40,9 @@ void mainloop(SDL_Window* window, SDL_Renderer* renderer){
             else if (event.type == SDL_KEYDOWN){
                 if (event.key.keysym.sym == SDLK_ESCAPE){
                     running = 0;
+                }
+                else if (event.key.keysym.sym == SDLK_p){
+                    pause = !pause;
                 }
             }
             else if (event.type == SDL_MOUSEBUTTONDOWN){
@@ -69,12 +65,14 @@ void mainloop(SDL_Window* window, SDL_Renderer* renderer){
 
         if (add){
             int tile = get_tile(mousex, mousey, nx, ny, tile_size);
-            grid[tile] = add_type;
+            grid[tile] = particle_types[add_type];
         }
 
-        new_grid = update(grid, nx, ny);
-        free(grid);
-        grid = new_grid;
+        if (!pause){
+            new_grid = update(grid, nx, ny);
+            free(grid);
+            grid = new_grid;
+        }
 
         SDL_SetRenderDrawColor(renderer, 20, 20, 20, 255);
         SDL_RenderClear(renderer);
@@ -88,8 +86,8 @@ void mainloop(SDL_Window* window, SDL_Renderer* renderer){
     free(grid);
 }
 
-char* update(char* grid, int nx, int ny){
-    char* new_grid = (char*)malloc(sizeof(char) * nx*ny);
+unsigned char* update(unsigned char* grid, int nx, int ny){
+    unsigned char* new_grid = (unsigned char*)malloc(sizeof(unsigned char) * nx*ny);
     memset(new_grid, 0, nx*ny);
     for (int i=nx*ny-1; i>-1; i--){
         switch(grid[i]){
@@ -108,6 +106,12 @@ char* update(char* grid, int nx, int ny){
             case SMOK:
                 update_smoke(grid, new_grid, i, nx, ny);
                 break;
+            case STEM:
+                update_steam(grid, new_grid, i, nx, ny);
+                break;
+            case CLOD:
+                update_cloud(grid, new_grid, i, nx, ny);
+                break;
         }
     }
 
@@ -120,14 +124,14 @@ int get_tile(int x, int y, int nx, int ny, int tile_size){
     return y*nx + x;
 }
 
-void update_tile(char* grid, char* new_grid, int i, int nx, int ny){
+void update_tile(unsigned char* grid, unsigned char* new_grid, int i, int nx, int ny){
     long unsigned int n = get_tiles(grid, i, nx, ny);
 
     set_tiles(new_grid, i, get_new_tiles(n), nx, ny);
     // printf("%d\n", grid[1]);
 }
 
-void set_tiles(char* grid, int index, long unsigned int n, int nx, int ny){
+void set_tiles(unsigned char* grid, int index, long unsigned int n, int nx, int ny){
     int tile;
      for (int i=-1; i<2; i++){
         for (int j=-1; j<2; j++){
@@ -157,7 +161,7 @@ long unsigned int get_new_tiles(long unsigned int n){
     return n;
 }
 
-long unsigned int get_tiles(char* grid, int index, int nx, int ny){
+long unsigned int get_tiles(unsigned char* grid, int index, int nx, int ny){
     long unsigned int tile = 127;
 
     int begin_i=-1, begin_j=-1;
@@ -204,7 +208,7 @@ long unsigned int get_tiles(char* grid, int index, int nx, int ny){
     return tile;
 }
 
-void update_sand(char* grid, char* new_grid, int i, int nx, int ny){
+void update_sand(unsigned char* grid, unsigned char* new_grid, int i, int nx, int ny){
     int x = i%nx, y = i/nx;
 
     if (y < ny-1){
@@ -213,9 +217,9 @@ void update_sand(char* grid, char* new_grid, int i, int nx, int ny){
             return;
         }
 
-        /*sand should fall through water*/
-        if (grid[i+nx] == WATR){
-            new_grid[i] = WATR;
+        /*sand should fall through liquids and gazes*/
+        if (grid[i+nx] & LIQUID || grid[i+nx] & GAZ){
+            new_grid[i] = grid[i+nx];
             new_grid[i+nx] = SAND;
             grid[i+nx] = VOID;
             return;
@@ -226,14 +230,6 @@ void update_sand(char* grid, char* new_grid, int i, int nx, int ny){
                 new_grid[i + nx - 1] = SAND;
                 return;
             }
-
-            /*fall through water*/
-            // if (grid[i + nx - 1] == 2){
-            //     new_grid[i + nx - 1] = SAND;
-            //     grid[i + nx - 1] = VOID;
-            //     new_grid[i] = WATR;
-            //     return;
-            // }
         }
 
 
@@ -242,25 +238,25 @@ void update_sand(char* grid, char* new_grid, int i, int nx, int ny){
                 new_grid[i + nx + 1] = SAND;
                 return;
             }
-
-            /*fall through water*/
-            // if (grid[i + nx + 1] == 2){
-            //     new_grid[i + nx + 1] = SAND;
-            //     grid[i + nx + 1] = VOID;
-            //     new_grid[i] = WATR;
-            //     return;
-            // }
         }
     }
 
     new_grid[i] = grid[i];
 }
 
-void update_water(char* grid, char* new_grid, int i, int nx, int ny){
+void update_water(unsigned char* grid, unsigned char* new_grid, int i, int nx, int ny){
     int x = i%nx, y = i/nx;
     if (y < ny-1){
         if (!new_grid[i+nx]){
             new_grid[i+nx] = WATR;
+            return;
+        }
+
+        /*water should fall through gazes*/
+        if (grid[i+nx] & GAZ){
+            new_grid[i] = grid[i+nx];
+            new_grid[i+nx] = WATR;
+            grid[i+nx] = VOID;
             return;
         }
 
@@ -300,24 +296,33 @@ void update_water(char* grid, char* new_grid, int i, int nx, int ny){
     new_grid[i] = grid[i];
 }
 
-void update_fire(char* grid, char* new_grid, int i, int nx, int ny){
+void update_fire(unsigned char* grid, unsigned char* new_grid, int i, int nx, int ny){
     int x = i%nx, y = i/nx;
 
     int n_neig = count_neig(grid, i, FIRE, nx, ny);
+
+    int n_propag = 0;
 
     if (x > 0){
         if (grid[i - 1] == WOOD){
             grid[i - 1] = VOID;
             new_grid[i - 1] = FIRE;
+            n_propag ++;
         }
         if (y > 0){
             if (grid[i-1-nx] == WOOD){
                 grid[i-1-nx] = VOID;
                 new_grid[i-1-nx] = FIRE;
+                n_propag ++;
             }
             if (grid[i-nx] == WOOD){
                 grid[i-nx] = VOID;
                 new_grid[i-nx] = FIRE;
+            }
+            else if (grid[i - nx] == WATR){
+                grid[i - nx] = VOID;
+                new_grid[i] = STEM;
+                return;
             }
         }
         if (y < ny-1){
@@ -328,6 +333,7 @@ void update_fire(char* grid, char* new_grid, int i, int nx, int ny){
             if (grid[i+nx] == WOOD){
                 grid[i+nx] = VOID;
                 new_grid[i+nx] = FIRE;
+                n_propag ++;
             }
         }
     }
@@ -336,32 +342,35 @@ void update_fire(char* grid, char* new_grid, int i, int nx, int ny){
         if (grid[i+1] == WOOD){
             grid[i+1] = VOID;
             new_grid[i+1] = FIRE;
+            n_propag ++;
         }
         if (y > 0){
             if (grid[i+1-nx] == WOOD){
                 grid[i+1-nx] = VOID;
                 new_grid[i+1-nx] = FIRE;
+                n_propag ++;
             }
         }
         if (y < ny-1){
             if (grid[i+1+nx] == WOOD){
                 grid[i+1+nx] = VOID;
                 new_grid[i+1+nx] = FIRE;
+                n_propag ++;
             }
         }
     }
 
-    if (n_neig > 6){
+    if (n_propag > 0){
         new_grid[i] = SMOK;
         return;
     }
-    if (n_neig > 2){
+    if (n_neig > 2 && n_neig < 4){
         new_grid[i] = grid[i];
     }
 }
 
 
-void update_smoke(char* grid, char* new_grid, int i, int nx, int ny){
+void update_smoke(unsigned char* grid, unsigned char* new_grid, int i, int nx, int ny){
     int x = i%nx, y = i/nx;
     if (y > 0){
         if (!new_grid[i-nx] && !grid[i-nx]){
@@ -405,8 +414,130 @@ void update_smoke(char* grid, char* new_grid, int i, int nx, int ny){
     new_grid[i] = grid[i];
 }
 
+void update_steam(unsigned char* grid, unsigned char* new_grid, int i, int nx, int ny){
+    int x = i%nx, y = i/nx;
 
-int count_neig(char* grid, int i, char type, int nx, int ny){
+    if (count_neig(grid, i, STEM, nx, ny) == 8){
+        new_grid[i] = CLOD;
+        return;
+    }
+
+    if (y > 0){
+        if (!new_grid[i-nx] && !grid[i-nx]){
+            new_grid[i-nx] = STEM;
+            return;
+        }
+
+        if (x > 0){
+            if (!grid[i - nx - 1] && !new_grid[i - nx - 1]){
+                new_grid[i - nx - 1] = STEM;
+                return;
+            }
+        }
+
+
+        if (x < nx - 1){
+            if (!grid[i - nx + 1] && !new_grid[i - nx + 1]){
+                new_grid[i - nx + 1] = STEM;
+                return;
+            }
+
+        }
+    }
+
+    if (rand()%2){
+        if (x > 0){
+            if (!grid[i - 1] && !new_grid[i-1]){
+                new_grid[i - 1] = STEM;
+                return;
+            }
+        }
+    }
+    
+    if (x < nx - 1){
+        if (!grid[i + 1] && !new_grid[i + 1]){
+            new_grid[i + 1] = STEM;
+            return;
+        }
+    }
+
+    new_grid[i] = grid[i];
+}
+
+void update_cloud(unsigned char* grid, unsigned char* new_grid, int i, int nx, int ny){
+    int x = i%nx, y = i/nx;
+
+    if (count_neig(grid, i, CLOD, nx, ny) == 8){
+        new_grid[i] = WATR;
+        return;
+    }
+
+    if (y > 0){
+        if (!new_grid[i-nx] && !grid[i-nx]){
+            new_grid[i-nx] = CLOD;
+            return;
+        }
+
+        /*clouds are lighter than other gazes*/
+        if (grid[i-nx] != CLOD && grid[i-nx] & GAZ){
+            new_grid[i] = grid[i-nx];
+            new_grid[i-nx] = CLOD;
+            grid[i-nx] = VOID;
+            return;
+        }
+
+        if (x > 0){
+            if (!grid[i - nx - 1] && !new_grid[i - nx - 1]){
+                new_grid[i - nx - 1] = CLOD;
+                return;
+            }
+
+            /*clouds are lighter than other gazes*/
+            if (grid[i - nx - 1] != CLOD && grid[i - nx - 1] & GAZ){
+                new_grid[i] = grid[i - nx - 1];
+                new_grid[i - nx - 1] = CLOD;
+                grid[i - nx - 1] = VOID;
+                return;
+            }
+        }
+
+
+        if (x < nx - 1){
+            if (!grid[i - nx + 1] && !new_grid[i - nx + 1]){
+                new_grid[i - nx + 1] = CLOD;
+                return;
+            }
+
+            /*clouds are lighter than other gazes*/
+            if (grid[i - nx + 1] != CLOD && grid[i - nx + 1] & GAZ){
+                new_grid[i] = grid[i - nx + 1];
+                new_grid[i - nx + 1] = CLOD;
+                grid[i - nx + 1] = VOID;
+                return;
+            }
+        }
+    }
+
+    if (rand()%2){
+        if (x > 0){
+            if (!grid[i - 1] && !new_grid[i-1]){
+                new_grid[i - 1] = CLOD;
+                return;
+            }
+        }
+    }
+    
+    if (x < nx - 1){
+        if (!grid[i + 1] && !new_grid[i + 1]){
+            new_grid[i + 1] = CLOD;
+            return;
+        }
+    }
+
+    new_grid[i] = grid[i];
+}
+
+int count_neig(unsigned char* grid, int i, unsigned char type, int nx, int ny){
     int x = i%nx, y = i/nx, n=0;
     if (x > 0){
         n += grid[i-1] == type;
@@ -429,6 +560,8 @@ int count_neig(char* grid, int i, char type, int nx, int ny){
             n += grid[i+1+nx] == type;
         }
     }
+
+    // printf("%d\n", n);
 
     return n;
 }

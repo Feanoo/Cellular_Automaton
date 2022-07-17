@@ -19,11 +19,14 @@ $(BINPATH)/cellular_automaton: $(BINPATH)/main.o
 $(BINPATH)/main.o: $(SRCPATH)/main.* $(BINPATH)/automaton.o
 	$(CC) -c ${CFLAGS} $(SRCPATH)/main.c -o $(BINPATH)/main.o
 
-$(BINPATH)/automaton.o: $(SRCPATH)/automaton.* $(BINPATH)/draw.o
+$(BINPATH)/automaton.o: $(SRCPATH)/automaton.* $(BINPATH)/draw.o $(BINPATH)/particles.o
 	$(CC) -c ${CFLAGS} $(SRCPATH)/automaton.c -o $(BINPATH)/automaton.o
 
-$(BINPATH)/draw.o: $(SRCPATH)/draw.*
+$(BINPATH)/draw.o: $(SRCPATH)/draw.* $(BINPATH)/particles.o
 	$(CC) -c ${CFLAGS} $(SRCPATH)/draw.c -o $(BINPATH)/draw.o
+
+$(BINPATH)/particles.o: $(SRCPATH)/particles.*
+	$(CC) -c ${CFLAGS} $(SRCPATH)/particles.c -o $(BINPATH)/particles.o
 
 clean:
 	rm -r $(BINPATH)

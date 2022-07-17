@@ -1,6 +1,7 @@
 #include <SDL2/SDL.h>
 #include <SDL2/SDL_ttf.h>
 #include "automaton.h"
+#include "particles.h"
 
 const int SCREEN_WIDTH = 1200;
 const int SCREEN_HEIGHT = 900;
@@ -28,6 +29,8 @@ int init(){
     if (renderer == NULL){
         return -1;
     }
+
+    init_particles();
 
     return 0;
 
